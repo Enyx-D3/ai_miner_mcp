@@ -1,0 +1,73 @@
+{
+  "format": "B2_V1_RELEASE_GATES",
+  "version": 1,
+  "gates": [
+    {
+      "id": "V1_IMPORT",
+      "label": "Reliable import/capture",
+      "requires": [
+        "CURRENT_TRUTH_ENGINE"
+      ]
+    },
+    {
+      "id": "V1_R1_GRAPH",
+      "label": "R1 authoritative graph",
+      "requires": [
+        "CURRENT_TRUTH_ENGINE"
+      ]
+    },
+    {
+      "id": "V1_MOBILE_MRS",
+      "label": "Mobile hard-residual MRS runtime",
+      "requires": [
+        "MOBILE_MODEL_RUNTIME",
+        "SEMANTIC_VERIFIER"
+      ]
+    },
+    {
+      "id": "V1_SYNC",
+      "label": "Web/Mobile convergence",
+      "requires": [
+        "P2P_GOLDEN_FLOW"
+      ]
+    },
+    {
+      "id": "V1_MCP",
+      "label": "MCP live bridge acceptance",
+      "requires": [
+        "MCP_LIVE_E2E",
+        "MCP_AUTH"
+      ]
+    },
+    {
+      "id": "V1_RECOVERY",
+      "label": "Restart/recovery/endurance",
+      "requires": [
+        "IMPORT_RESUME",
+        "WORKER_RECOVERY"
+      ]
+    },
+    {
+      "id": "V1_SECURITY",
+      "label": "Production security",
+      "requires": [
+        "MCP_AUTH",
+        "R1_EXEC_AUTH",
+        "SECRET_HYGIENE"
+      ]
+    },
+    {
+      "id": "PRODUCTION_V1",
+      "label": "Brain2 AI Miner Production V1",
+      "requires": [
+        "V1_IMPORT",
+        "V1_R1_GRAPH",
+        "V1_MOBILE_MRS",
+        "V1_SYNC",
+        "V1_MCP",
+        "V1_RECOVERY",
+        "V1_SECURITY"
+      ]
+    }
+  ]
+}
