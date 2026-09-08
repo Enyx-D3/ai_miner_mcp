@@ -1,0 +1,22 @@
+{
+  "name": "brain2-ai-miner-chatgpt-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Production MCP surface for Brain2 AI Miner. AI Miner remains the source of truth; this service owns only archaeology execution state.",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "start": "node --env-file=.env src/server.mjs",
+    "check": "node --check src/server.mjs && node --check src/core.mjs && node --check src/ai-miner-client.mjs && node --check src/mission-store.mjs && node --check src/deterministic-zip.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "verify": "npm run check && npm test",
+    "probe:ai-miner": "node src/probe.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/node": "2.0.0",
+    "@modelcontextprotocol/server": "2.0.0",
+    "zod": "4.5.4"
+  }
+}

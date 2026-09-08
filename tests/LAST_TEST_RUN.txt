@@ -1,0 +1,52 @@
+
+> brain2-ai-miner-chatgpt-mcp@1.0.0 test
+> node --test tests/*.test.mjs
+
+TAP version 13
+# Subtest: client binds to real AI Miner route family and normalizes results
+ok 1 - client binds to real AI Miner route family and normalizes results
+  ---
+  duration_ms: 37.187638
+  type: 'test'
+  ...
+# (node:982) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: mission is deterministic for the same AI Miner snapshot
+ok 2 - mission is deterministic for the same AI Miner snapshot
+  ---
+  duration_ms: 11.262614
+  type: 'test'
+  ...
+# Subtest: archaeology searches live evidence and creates durable residuals
+ok 3 - archaeology searches live evidence and creates durable residuals
+  ---
+  duration_ms: 11.436627
+  type: 'test'
+  ...
+# Subtest: provisional findings never mutate AI Miner bootstrap truth
+ok 4 - provisional findings never mutate AI Miner bootstrap truth
+  ---
+  duration_ms: 1.830789
+  type: 'test'
+  ...
+# Subtest: refresh sees a changed AI Miner snapshot without restarting mission
+ok 5 - refresh sees a changed AI Miner snapshot without restarting mission
+  ---
+  duration_ms: 1.399409
+  type: 'test'
+  ...
+# Subtest: mission ZIP is byte-identical for unchanged state
+ok 6 - mission ZIP is byte-identical for unchanged state
+  ---
+  duration_ms: 8.312118
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 133.186064

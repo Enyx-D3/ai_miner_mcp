@@ -1,0 +1,33 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import http from 'node:http';
+import { AiMinerClient } from '../src/ai-miner-client.mjs';
+
+function serve() {
+  const server = http.createServer((req,res) => {
+    const u = new URL(req.url, 'http://x');
+    res.setHeader('content-type','application/json');
+    if (u.pathname === '/api/developer') return res.end(JSON.stringify({ implementation:'implemented-local-runtime' }));
+    if (u.pathname === '/api/projects') return res.end(JSON.stringify({ projects:[{id:'P1',name:'R1X'}] }));
+    if (u.pathname === '/api/projects/P1') return res.end(JSON.stringify({ project:{id:'P1',name:'R1X',summary:'live'} }));
+    if (u.pathname === '/api/search') return res.end(JSON.stringify({ results:[{id:'S1',text:`hit:${u.searchParams.get('q')}`}] }));
+    if (u.pathname === '/api/current-truth') return res.end(JSON.stringify({ heads:[{subject:'R1',value:'streaming'}] }));
+    if (u.pathname === '/api/sources') return res.end(JSON.stringify({ sources:[{id:'S1',hash:'abc'}] }));
+    res.statusCode=404; res.end(JSON.stringify({error:'not found'}));
+  });
+  return new Promise(resolve => server.listen(0,'127.0.0.1',()=>resolve(server)));
+}
+
+test('client binds to real AI Miner route family and normalizes results', async () => {
+  const server = await serve();
+  const { port } = server.address();
+  const c = new AiMinerClient({ baseUrl:`http://127.0.0.1:${port}` });
+  const p = await c.bootstrap('R1X');
+  assert.equal(p.projectId,'P1');
+  assert.equal(p.sources.length,1);
+  const s = await c.search('RapidRetrieve',{projectId:'P1'});
+  assert.equal(s.results[0].text,'hit:RapidRetrieve');
+  const probe = await c.probe();
+  assert.equal(probe.ok,true);
+  await new Promise(resolve=>server.close(resolve));
+});

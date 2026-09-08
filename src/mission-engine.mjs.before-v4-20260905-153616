@@ -1,0 +1,622 @@
+import crypto from 'node:crypto';
+
+const STOPWORDS = new Set([
+  'the','and','for','with','that','this','from','into','your','our','what','when','where','which','who','why','how','is','of','we','do','to','a','an','in','on',
+  'are','was','were','been','being','have','has','had','will','would','should','could','can','may','might','must',
+  'about','after','before','then','than','them','they','their','there','here','also','just','only','very','more',
+  'most','much','many','some','any','all','not','but','you','user','please','show','tell','give','make','build'
+]);
+
+const GENERIC_INTENT = new Set([
+  'current','status','project','projects','system','systems','experiment','experiments','actually','verified',
+  'verification','next','step','steps','find','search','deep','everything','latest','state','result','results'
+]);
+
+const NOISE = new Set([
+  'captureconnectorid','captureid','captureurl','conversationid','atomcount','atomids','createdat','updatedat',
+  'snapshotversion','memoryroot','deviceid','sessionid','provider','sourcetype','sourceid','messageid','projectid',
+  'metadata','schema','index','indexes','timestamp','timestamps','localhost','http','https','browser'
+]);
+
+const EVIDENCE_QUERIES = [
+  'current truth latest state',
+  'verified experiment blind test regression',
+  'benchmark performance measurement',
+  'decision architecture chosen approach',
+  'failure contradiction superseded',
+  'open item unresolved next step',
+  'artifact implementation code zip report',
+  'history timeline previous version'
+];
+
+function hash(v) {
+  return crypto.createHash('sha256').update(JSON.stringify(v)).digest('hex').slice(0, 20);
+}
+
+function norm(s) {
+  return String(s ?? '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function tokens(text, { includeGeneric = false } = {}) {
+  const raw = String(text ?? '').match(/[A-Za-z][A-Za-z0-9._-]{1,}/g) ?? [];
+  const out = [];
+  const seen = new Set();
+
+  for (const rawToken of raw) {
+    const t = rawToken.toLowerCase().replace(/^[^a-z0-9]+|[^a-z0-9]+$/g, '');
+    if (t.length < 2 || STOPWORDS.has(t) || NOISE.has(t) || /^\d+$/.test(t)) continue;
+    if (!includeGeneric && GENERIC_INTENT.has(t)) continue;
+    if (seen.has(t)) continue;
+    seen.add(t);
+    out.push(t);
+  }
+  return out;
+}
+
+function acronymAnchors(text) {
+  const raw = String(text ?? '').match(/\b[A-Za-z]{1,6}\d+[A-Za-z0-9-]*\b|\b[A-Z]{2,8}\b/g) ?? [];
+  return [...new Set(raw.map(x => x.toLowerCase()))];
+}
+
+function unique(values, max = 64) {
+  const seen = new Set();
+  const out = [];
+  for (const v of values) {
+    const s = String(v ?? '').replace(/\s+/g, ' ').trim();
+    if (!s) continue;
+    const k = s.toLowerCase();
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(s);
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
+function compact(value, depth = 0) {
+  if (value == null) return value;
+  if (typeof value === 'string') return value.length > 2200 ? value.slice(0, 2200) + '…' : value;
+  if (typeof value === 'number' || typeof value === 'boolean') return value;
+  if (depth > 5) return '[truncated]';
+  if (Array.isArray(value)) return value.slice(0, 30).map(v => compact(v, depth + 1));
+  if (typeof value === 'object') {
+    const out = {};
+    for (const [k, v] of Object.entries(value).slice(0, 60)) out[k] = compact(v, depth + 1);
+    return out;
+  }
+  return String(value);
+}
+
+function extractProjects(raw) {
+  if (Array.isArray(raw)) return raw;
+  if (!raw || typeof raw !== 'object') return [];
+  for (const k of ['projects','items','results','data']) if (Array.isArray(raw[k])) return raw[k];
+  return [];
+}
+
+function pName(p) {
+  if (typeof p === 'string') return p;
+  return String(p?.name ?? p?.title ?? p?.projectName ?? p?.project ?? p?.slug ?? '');
+}
+
+function pId(p) {
+  const v = p?.projectId ?? p?.project_id ?? p?.id;
+  return v == null ? undefined : String(v);
+}
+
+function collectProjectMentions(value, out = [], depth = 0) {
+  if (value == null || depth > 7) return out;
+  if (Array.isArray(value)) {
+    for (const v of value.slice(0, 100)) collectProjectMentions(v, out, depth + 1);
+    return out;
+  }
+  if (typeof value !== 'object') return out;
+
+  const id = value.projectId ?? value.project_id;
+  const name = value.projectName ?? value.project_name ?? value.project?.name ??
+               (id ? (value.name ?? value.title ?? value.project) : undefined);
+
+  if (id || name) {
+    out.push({
+      projectId: id == null ? undefined : String(id),
+      name: name == null ? undefined : String(name)
+    });
+  }
+
+  for (const v of Object.values(value).slice(0, 100)) collectProjectMentions(v, out, depth + 1);
+  return out;
+}
+
+function extractRecords(raw) {
+  if (Array.isArray(raw)) return raw;
+  if (!raw || typeof raw !== 'object') return [raw];
+  for (const k of ['results','items','hits','evidence','atoms','messages','data']) {
+    if (Array.isArray(raw[k])) return raw[k];
+  }
+  return [raw];
+}
+
+function collectStrings(value, out = [], depth = 0) {
+  if (value == null || depth > 6) return out;
+  if (typeof value === 'string') { out.push(value); return out; }
+  if (Array.isArray(value)) {
+    for (const v of value.slice(0, 60)) collectStrings(v, out, depth + 1);
+    return out;
+  }
+  if (typeof value === 'object') {
+    for (const v of Object.values(value).slice(0, 80)) collectStrings(v, out, depth + 1);
+  }
+  return out;
+}
+
+function relevance(text, anchors) {
+  const n = norm(text);
+  let score = 0;
+  for (const a of anchors.strong) {
+    if (n.includes(norm(a))) score += 10;
+  }
+  for (const a of anchors.domain) {
+    if (n.includes(norm(a))) score += 2;
+  }
+  return score;
+}
+
+function scoreTitle(name, anchors, hint) {
+  const n = norm(name);
+  if (!n) return 0;
+  let score = 0;
+
+  if (hint && (n.includes(norm(hint)) || norm(hint).includes(n))) score += 30;
+
+  for (const a of anchors.strong) {
+    if (n.includes(norm(a))) score += 20;
+  }
+  for (const a of anchors.domain) {
+    if (n.includes(norm(a))) score += 4;
+  }
+
+  // Generic-only matches are weak and should not dominate project resolution.
+  const generic = tokens(name, { includeGeneric: true }).filter(t => GENERIC_INTENT.has(t));
+  score += Math.min(generic.length, 2);
+
+  return score;
+}
+
+async function discover(client, prompt, projectHint) {
+  const rawProjects = await client.listProjects();
+  const projects = extractProjects(rawProjects);
+
+  const strong = unique([
+    ...(projectHint ? [projectHint] : []),
+    ...acronymAnchors(prompt)
+  ], 8);
+
+  const domain = unique(tokens(prompt), 12);
+  const anchors = { strong, domain };
+
+  const discoveryQueries = unique([
+    ...(projectHint ? [projectHint] : []),
+    ...strong,
+    ...(strong.length && domain.length ? [`${strong[0]} ${domain[0]}`] : []),
+    String(prompt).trim()
+  ], 8);
+
+  const mentionCounts = new Map();
+  const discoveryEvidence = [];
+
+  for (const q of discoveryQueries) {
+    try {
+      const raw = await client.searchAll(q, { mode: 'evidence', pageLimit: 200, maxResults: 2000, maxPages: 20 });
+      discoveryEvidence.push({ query: q, ok: true, raw: compact(raw) });
+
+      for (const m of collectProjectMentions(raw)) {
+        const key = m.projectId ? `id:${m.projectId}` : `name:${norm(m.name)}`;
+        if (!key || key === 'name:') continue;
+        const prev = mentionCounts.get(key) ?? { ...m, hits: 0 };
+        prev.hits += 1;
+        if (!prev.name && m.name) prev.name = m.name;
+        if (!prev.projectId && m.projectId) prev.projectId = m.projectId;
+        mentionCounts.set(key, prev);
+      }
+    } catch (e) {
+      discoveryEvidence.push({
+        query: q,
+        ok: false,
+        error: e instanceof Error ? e.message : String(e)
+      });
+    }
+  }
+
+  const byId = new Map(projects.map(p => [pId(p), p]).filter(([id]) => id));
+  const byName = new Map(projects.map(p => [norm(pName(p)), p]).filter(([name]) => name));
+
+  const candidates = new Map();
+
+  for (const p of projects) {
+    const id = pId(p);
+    const name = pName(p);
+    if (!name) continue;
+    const key = id ? `id:${id}` : `name:${norm(name)}`;
+    candidates.set(key, {
+      projectId: id,
+      name,
+      titleScore: scoreTitle(name, anchors, projectHint),
+      evidenceHits: 0,
+      source: 'project-list'
+    });
+  }
+
+  for (const [key, m] of mentionCounts.entries()) {
+    const backing = (m.projectId && byId.get(m.projectId)) || (m.name && byName.get(norm(m.name)));
+    const name = m.name || (backing ? pName(backing) : '');
+    const projectId = m.projectId || (backing ? pId(backing) : undefined);
+    if (!name && !projectId) continue;
+
+    const canonicalKey = projectId ? `id:${projectId}` : `name:${norm(name)}`;
+    const prev = candidates.get(canonicalKey) ?? {
+      projectId,
+      name,
+      titleScore: scoreTitle(name, anchors, projectHint),
+      evidenceHits: 0,
+      source: 'search'
+    };
+    prev.evidenceHits += m.hits;
+    prev.source = prev.source === 'project-list' ? 'project-list+search' : 'search';
+    candidates.set(canonicalKey, prev);
+  }
+
+  const ranked = [...candidates.values()]
+    .map(c => {
+      const anchorScore = scoreTitle(c.name, anchors, projectHint);
+      const score = anchorScore + Math.min(c.evidenceHits * 6, 24);
+      const hasStrong = anchors.strong.some(a => norm(c.name).includes(norm(a)));
+      const confidence =
+        score >= 20 || hasStrong ? 'HIGH' :
+        score >= 10 ? 'MEDIUM' :
+        'LOW';
+      return { ...c, score, confidence };
+    })
+    .sort((a, b) => b.score - a.score || b.evidenceHits - a.evidenceHits || a.name.localeCompare(b.name));
+
+  const resolved = ranked.filter(x => x.confidence !== 'LOW').slice(0, 3);
+
+  return {
+    rawProjects,
+    projects,
+    anchors,
+    discoveryQueries,
+    discoveryEvidence,
+    rankedCandidates: ranked.slice(0, 12),
+    resolved
+  };
+}
+
+function bootstrapTerms(data) {
+  const project = data?.project ?? data?.data?.project ?? {};
+  return unique([
+    ...(Array.isArray(project.aliases) ? project.aliases : []),
+    ...(Array.isArray(project.entityTerms) ? project.entityTerms : []),
+    ...(Array.isArray(project.tags) ? project.tags : [])
+  ].filter(Boolean), 24);
+}
+
+function filterCurrentTruth(bootstrap, anchors) {
+  const accepted = [];
+  const rejected = [];
+
+  for (const b of bootstrap) {
+    const current = b?.data?.currentTruth?.current ?? [];
+    for (const truth of current) {
+      const text = truth?.text ?? truth?.value ?? '';
+      const score = relevance(text, anchors);
+      const item = {
+        project: b.project,
+        score,
+        truth: compact(truth)
+      };
+      if (score > 0) accepted.push(item);
+      else rejected.push(item);
+    }
+  }
+  return { accepted, rejected };
+}
+
+function buildQueries(prompt, discovery, bootstrap) {
+  const baseTopic = unique([
+    ...(discovery.anchors.strong ?? []),
+    ...(discovery.anchors.domain ?? [])
+  ], 6).join(' ');
+
+  const queries = [
+    String(prompt).trim(),
+    ...discovery.discoveryQueries
+  ];
+
+  const subjects = discovery.resolved.length
+    ? discovery.resolved.map(x => x.name)
+    : [baseTopic || String(prompt).trim()];
+
+  for (const subject of subjects.slice(0, 3)) {
+    queries.push(subject);
+    for (const suffix of EVIDENCE_QUERIES) queries.push(`${subject} ${suffix}`);
+  }
+
+  // Evidence-derived aliases/tags/entity terms, but only after confident project resolution.
+  if (discovery.resolved.length) {
+    for (const b of bootstrap) {
+      for (const term of bootstrapTerms(b.data).slice(0, 8)) {
+        if (relevance(term, discovery.anchors) > 0) {
+          queries.push(`${b.project} ${term}`);
+        }
+      }
+    }
+  }
+
+  return unique(queries, 36);
+}
+
+function buildTaskContract(prompt, discovery, bootstrap) {
+  const truthGate = filterCurrentTruth(bootstrap, discovery.anchors);
+
+  return {
+    objective: String(prompt).trim(),
+    anchors: discovery.anchors,
+    resolvedProjects: discovery.resolved.map(({ name, projectId, score, confidence, evidenceHits }) => ({
+      name, projectId, score, confidence, evidenceHits
+    })),
+    projectCandidates: discovery.rankedCandidates,
+    requiredEvidence: [
+      'latest relevant Current Truth / current state',
+      'verified experiments and measurements',
+      'important decisions and architecture choices',
+      'failures, contradictions, and superseded claims',
+      'open items and next actions',
+      'relevant artifacts and implementation evidence',
+      'historical context required to explain the current state'
+    ],
+    relevantCurrentTruth: truthGate.accepted,
+    rejectedCurrentTruthAsIrrelevant: truthGate.rejected,
+    rules: [
+      'AI Miner is the sole source of truth.',
+      'Do not force a project match when confidence is low.',
+      'Exact acronyms/identifiers such as R1, R1X, CP003 outrank generic words such as verified/current/status.',
+      'Prefer latest canonical/current evidence only when it is relevant to the prompt anchors.',
+      'Keep historical and superseded evidence separate from current truth.',
+      'Do not silently resolve contradictions.',
+      'Distinguish verified measurements from estimates or plans.',
+      'Report missing evidence instead of inventing it.'
+    ]
+  };
+}
+
+export async function compileBrain2Mission(client, prompt, options = {}) {
+  const projectHint = options.projectHint ? String(options.projectHint) : '';
+  const maxBootstrapProjects = Math.max(0, Math.min(Number(options.maxBootstrapProjects ?? 3), 5));
+
+  const discovery = await discover(client, prompt, projectHint);
+  const bootstrap = [];
+
+  for (const match of discovery.resolved.slice(0, maxBootstrapProjects)) {
+    if (!match.name) continue;
+    try {
+      bootstrap.push({ project: match.name, ok: true, data: await client.bootstrap(match.name) });
+    } catch (e) {
+      bootstrap.push({
+        project: match.name,
+        ok: false,
+        error: e instanceof Error ? e.message : String(e)
+      });
+    }
+  }
+
+  const taskContract = buildTaskContract(prompt, discovery, bootstrap);
+  const queryPlan = buildQueries(prompt, discovery, bootstrap);
+
+  const enhancedPrompt = [
+    `MISSION OBJECTIVE: ${taskContract.objective}`,
+    '',
+    `STRONG ANCHORS: ${taskContract.anchors.strong.join(', ') || 'none'}`,
+    `DOMAIN TERMS: ${taskContract.anchors.domain.join(', ') || 'none'}`,
+    `RESOLVED PROJECTS: ${taskContract.resolvedProjects.map(x => `${x.name} [${x.confidence}]`).join(', ') || 'none confidently resolved'}`,
+    '',
+    'REQUIRED EVIDENCE:',
+    ...taskContract.requiredEvidence.map(x => `- ${x}`),
+    '',
+    'RULES:',
+    ...taskContract.rules.map(x => `- ${x}`)
+  ].join('\n');
+
+  return {
+    missionId: `B2Q-${hash({
+      prompt,
+      resolved: taskContract.resolvedProjects.map(x => x.projectId ?? x.name),
+      minute: Math.floor(Date.now() / 60000)
+    }).toUpperCase()}`,
+    originalPrompt: String(prompt).trim(),
+    enhancedPrompt,
+    taskContract: {
+      ...taskContract,
+      bootstrap: bootstrap.map(x => ({
+        project: x.project,
+        ok: x.ok,
+        data: x.ok ? compact(x.data) : undefined,
+        error: x.ok ? undefined : x.error
+      }))
+    },
+    queryPlan,
+    discovery: {
+      queries: discovery.discoveryQueries,
+      candidates: discovery.rankedCandidates
+    },
+    sourceInventory: {
+      explicitProjectCount: discovery.projects.length,
+      projectNames: discovery.projects.slice(0, 250).map(pName).filter(Boolean)
+    },
+    note:
+      'Mission compiler v2 uses evidence-first project discovery and refuses low-confidence project matches. Exhaustiveness is still bounded by the current AI Miner search API.'
+  };
+}
+
+function topResidualTokens(evidence, baseAnchors, max = 8) {
+  const counts = new Map();
+  const base = new Set([...baseAnchors.strong, ...baseAnchors.domain].map(norm));
+
+  for (const e of evidence) {
+    for (const s of collectStrings(e.record)) {
+      for (const t of tokens(s)) {
+        if (base.has(norm(t)) || t.length < 4 || /[0-9]{4,}/.test(t)) continue;
+        counts.set(t, (counts.get(t) ?? 0) + 1);
+      }
+    }
+  }
+
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, max)
+    .map(([t]) => t);
+}
+
+export async function runBrain2Mission(client, prompt, options = {}) {
+  const maxQueries = Math.max(4, Math.min(Number(options.maxQueries ?? 20), 40));
+  const maxEvidence = Math.max(10, Math.min(Number(options.maxEvidence ?? 80), 200));
+
+  const mission = await compileBrain2Mission(client, prompt, options);
+  const evidence = [];
+  const ids = new Set();
+  const queryLog = [];
+  let succeeded = 0;
+
+  async function runQuery(query, phase) {
+    if (queryLog.length >= maxQueries || evidence.length >= maxEvidence) return;
+    const qlog = { query, phase, ok: false, newEvidence: 0 };
+
+    try {
+      const raw = await client.search(query, { mode: 'evidence' });
+      for (const record of extractRecords(raw).slice(0, 40)) {
+        const c = compact(record);
+        const id = hash(c);
+        if (ids.has(id)) continue;
+        ids.add(id);
+        evidence.push({ evidenceId: `E-${id}`, query, phase, record: c });
+        qlog.newEvidence++;
+        if (evidence.length >= maxEvidence) break;
+      }
+      qlog.ok = true;
+      succeeded++;
+    } catch (e) {
+      qlog.error = e instanceof Error ? e.message : String(e);
+    }
+
+    queryLog.push(qlog);
+  }
+
+  const projectCorpusCoverage = [];
+  for (const project of mission.taskContract.resolvedProjects ?? []) {
+    if (!project.projectId) continue;
+    try {
+      const corpus = await client.searchAll('*', {
+        projectId: project.projectId,
+        mode: 'evidence',
+        pageLimit: 200,
+        maxResults: 5000,
+        maxPages: 100
+      });
+      projectCorpusCoverage.push({
+        projectId: project.projectId,
+        projectName: project.name,
+        totalMatches: corpus.totalMatches,
+        returnedMatches: corpus.returnedMatches,
+        exhausted: corpus.exhausted,
+        truncated: corpus.truncated,
+        coverage: corpus.coverage
+      });
+      for (const record of corpus.results) {
+        const c = compact(record);
+        const id = hash(c);
+        if (ids.has(id)) continue;
+        ids.add(id);
+        if (evidence.length < maxEvidence) {
+          evidence.push({
+            evidenceId: `E-${id}`,
+            query: '*',
+            phase: 'project-corpus',
+            record: c
+          });
+        }
+      }
+    } catch (e) {
+      projectCorpusCoverage.push({
+        projectId: project.projectId,
+        projectName: project.name,
+        error: e instanceof Error ? e.message : String(e)
+      });
+    }
+  }
+
+  for (const q of mission.queryPlan) {
+    if (queryLog.length >= Math.max(4, maxQueries - 6)) break;
+    await runQuery(q, 'planned');
+  }
+
+  const residualTokens = topResidualTokens(evidence, mission.taskContract.anchors, 8);
+  const topic =
+    mission.taskContract.anchors.strong[0] ??
+    mission.taskContract.resolvedProjects[0]?.name ??
+    mission.taskContract.anchors.domain.slice(0, 2).join(' ') ??
+    mission.originalPrompt;
+
+  const residualQueries = unique(residualTokens.map(t => `${topic} ${t}`), 8);
+
+  for (const q of residualQueries) {
+    if (queryLog.length >= maxQueries) break;
+    await runQuery(q, 'residual');
+  }
+
+  const unresolved = [];
+  if (!mission.taskContract.resolvedProjects.length) {
+    unresolved.push('No explicit AI Miner project was confidently resolved. Retrieval therefore remained topic-centric across the corpus.');
+  }
+  if (!evidence.length) unresolved.push('No evidence was returned by the current AI Miner search API.');
+  if (queryLog.some(x => !x.ok)) unresolved.push('One or more search queries failed and should be retried.');
+  if (queryLog.length >= maxQueries) unresolved.push('Query budget was exhausted; deeper archaeology may find additional evidence.');
+
+  return {
+    mission: {
+      missionId: mission.missionId,
+      originalPrompt: mission.originalPrompt,
+      enhancedPrompt: mission.enhancedPrompt,
+      taskContract: mission.taskContract
+    },
+    retrieval: {
+      queryLog,
+      residualQueries,
+      searchesAttempted: queryLog.length,
+      searchesSucceeded: succeeded,
+      evidenceCount: evidence.length,
+      evidenceCap: maxEvidence,
+      queryCap: maxQueries
+    },
+    contextPack: {
+      relevantCurrentTruth: mission.taskContract.relevantCurrentTruth,
+      evidence,
+      unresolved,
+      instructionsForAssistant: [
+        'Answer from AI Miner evidence and the user prompt.',
+        'Do not treat rejected/irrelevant Current Truth as authoritative for this question.',
+        'Separate CURRENT from HISTORICAL/SUPERSEDED.',
+        'Separate VERIFIED measurements from ESTIMATED/PLANNED claims.',
+        'Surface contradictions and missing evidence explicitly.',
+        'If the evidence is insufficient, say what additional AI Miner retrieval is needed.'
+      ]
+    },
+    coverage: {
+      explicitProjectCountSeen: mission.sourceInventory.explicitProjectCount,
+      matchedProjects: mission.taskContract.resolvedProjects,
+      projectCorpusCoverage,
+      boundedDeepSearchCompleted: true,
+      exhaustiveCorpusEnumerationProven: false
+    },
+    note:
+      'Mission v2 completed bounded evidence-first deep retrieval. A cursor/search-all primitive is still required to prove exhaustive corpus coverage.'
+  };
+}

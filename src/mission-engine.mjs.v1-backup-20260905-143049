@@ -1,0 +1,312 @@
+import crypto from 'node:crypto';
+
+const STOPWORDS = new Set([
+  'the','and','for','with','that','this','from','into','your','our','what','when','where','which','who','why','how',
+  'are','was','were','been','being','have','has','had','will','would','should','could','can','may','might','must',
+  'about','after','before','then','than','them','they','their','there','here','also','just','only','very','more',
+  'most','much','many','some','any','all','not','but','you','user','project','system','thing','things','please',
+  'find','search','show','tell','give','make','build','current','status'
+]);
+
+const NOISE = new Set([
+  'captureconnectorid','captureid','captureurl','conversationid','atomcount','atomids','createdat','updatedat',
+  'snapshotversion','memoryroot','deviceid','sessionid','provider','sourcetype','sourceid','messageid','projectid',
+  'metadata','schema','index','indexes','timestamp','timestamps','localhost','http','https','browser'
+]);
+
+const EVIDENCE_FAMILIES = [
+  'current truth latest state current state latest status',
+  'verified experiment verified result blind test regression',
+  'benchmark performance result measurement',
+  'decision architecture decision chosen approach',
+  'failure failed experiment contradiction superseded',
+  'open item unresolved next step todo',
+  'artifact implementation code zip report',
+  'history timeline previous version earlier result'
+];
+
+function hash(value) {
+  return crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex').slice(0, 20);
+}
+
+function tokenize(text) {
+  const raw = String(text ?? '').toLowerCase().match(/[a-z][a-z0-9.-]{2,}/g) ?? [];
+  return [...new Set(raw.map(t => t.replace(/^[^a-z0-9]+|[^a-z0-9]+$/g, '')).filter(t =>
+    t.length >= 3 && !STOPWORDS.has(t) && !NOISE.has(t) && !/^\d+$/.test(t) && !t.includes('://')
+  ))];
+}
+
+function unique(values, max = 64) {
+  const seen = new Set();
+  const out = [];
+  for (const value of values) {
+    const s = String(value ?? '').replace(/\s+/g, ' ').trim();
+    if (!s) continue;
+    const k = s.toLowerCase();
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(s);
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
+function compact(value, depth = 0) {
+  if (value == null) return value;
+  if (typeof value === 'string') return value.length > 2400 ? value.slice(0, 2400) + '…' : value;
+  if (typeof value === 'number' || typeof value === 'boolean') return value;
+  if (depth >= 5) return '[truncated]';
+  if (Array.isArray(value)) return value.slice(0, 30).map(v => compact(v, depth + 1));
+  if (typeof value === 'object') {
+    const out = {};
+    for (const [k, v] of Object.entries(value).slice(0, 50)) out[k] = compact(v, depth + 1);
+    return out;
+  }
+  return String(value);
+}
+
+function extractProjects(raw) {
+  if (Array.isArray(raw)) return raw;
+  if (!raw || typeof raw !== 'object') return [];
+  for (const key of ['projects','items','results','data']) if (Array.isArray(raw[key])) return raw[key];
+  return [];
+}
+
+function projectName(p) {
+  if (typeof p === 'string') return p;
+  if (!p || typeof p !== 'object') return '';
+  return String(p.name ?? p.title ?? p.project ?? p.slug ?? p.label ?? '');
+}
+
+function projectId(p) {
+  if (!p || typeof p !== 'object') return undefined;
+  const id = p.projectId ?? p.id ?? p.project_id;
+  return id == null ? undefined : String(id);
+}
+
+function scoreProject(prompt, project) {
+  const name = projectName(project);
+  if (!name) return 0;
+  const p = String(prompt).toLowerCase();
+  const n = name.toLowerCase();
+  const pt = new Set(tokenize(prompt));
+  const nt = tokenize(name);
+  let score = 0;
+  if (p.includes(n) || n.includes(p)) score += 20;
+  for (const t of nt) {
+    if (pt.has(t)) score += 4;
+    else if ([...pt].some(x => x.startsWith(t) || t.startsWith(x))) score += 1;
+  }
+  if (nt.length && nt.every(t => pt.has(t))) score += 8;
+  return score;
+}
+
+function extractRecords(raw) {
+  if (Array.isArray(raw)) return raw;
+  if (!raw || typeof raw !== 'object') return [raw];
+  for (const key of ['results','items','hits','evidence','atoms','messages','data']) {
+    if (Array.isArray(raw[key])) return raw[key];
+  }
+  return [raw];
+}
+
+function collectStrings(value, out = [], depth = 0) {
+  if (value == null || depth > 5) return out;
+  if (typeof value === 'string') { out.push(value); return out; }
+  if (Array.isArray(value)) {
+    for (const v of value.slice(0, 40)) collectStrings(v, out, depth + 1);
+    return out;
+  }
+  if (typeof value === 'object') {
+    for (const v of Object.values(value).slice(0, 60)) collectStrings(v, out, depth + 1);
+  }
+  return out;
+}
+
+function residualTokens(evidence, existingTokens, max = 8) {
+  const counts = new Map();
+  const existing = new Set(existingTokens);
+  for (const item of evidence) {
+    for (const s of collectStrings(item.record)) {
+      for (const t of tokenize(s)) {
+        if (existing.has(t) || t.length < 4 || /[0-9]{3,}/.test(t)) continue;
+        counts.set(t, (counts.get(t) ?? 0) + 1);
+      }
+    }
+  }
+  return [...counts.entries()]
+    .sort((a,b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, max)
+    .map(([t]) => t);
+}
+
+function buildQueryPlan(prompt, matches) {
+  const q = [String(prompt).trim()];
+  for (const match of matches.slice(0, 3)) {
+    q.push(match.name);
+    for (const family of EVIDENCE_FAMILIES) q.push(`${match.name} ${family}`);
+  }
+  if (!matches.length) for (const family of EVIDENCE_FAMILIES) q.push(`${prompt} ${family}`);
+  for (const token of tokenize(prompt).slice(0, 8)) q.push(token);
+  return unique(q, 36);
+}
+
+export async function compileBrain2Mission(client, prompt, options = {}) {
+  const maxBootstrapProjects = Math.max(0, Math.min(Number(options.maxBootstrapProjects ?? 3), 5));
+  const rawProjects = await client.listProjects();
+  const projects = extractProjects(rawProjects);
+
+  const ranked = projects.map(project => ({
+    project,
+    name: projectName(project),
+    projectId: projectId(project),
+    score: scoreProject(prompt, project)
+  })).filter(x => x.name).sort((a,b) => b.score - a.score || a.name.localeCompare(b.name));
+
+  const matches = ranked.filter(x => x.score > 0).slice(0, maxBootstrapProjects);
+  const bootstrapTargets = matches.length ? matches : ranked.slice(0, Math.min(1, maxBootstrapProjects));
+  const bootstrap = [];
+  for (const match of bootstrapTargets) {
+    try {
+      bootstrap.push({ project: match.name, ok: true, data: compact(await client.bootstrap(match.name)) });
+    } catch (error) {
+      bootstrap.push({ project: match.name, ok: false, error: error instanceof Error ? error.message : String(error) });
+    }
+  }
+
+  const taskContract = {
+    objective: String(prompt).trim(),
+    resolvedProjects: matches.map(({name, projectId, score}) => ({name, projectId, score})),
+    requiredEvidence: [
+      'latest Current Truth / current state',
+      'verified experiments and measurements',
+      'important decisions and architecture choices',
+      'failures, contradictions, and superseded claims',
+      'open items and next actions',
+      'relevant artifacts and implementation evidence',
+      'historical context required to explain the current state'
+    ],
+    rules: [
+      'AI Miner is the sole source of truth.',
+      'Prefer latest canonical/current evidence over older claims.',
+      'Keep historical and superseded evidence separate from current truth.',
+      'Do not silently resolve contradictions.',
+      'Distinguish verified measurements from estimates or plans.',
+      'Report missing evidence instead of inventing it.'
+    ],
+    bootstrap
+  };
+
+  const enhancedPrompt = [
+    `MISSION OBJECTIVE: ${taskContract.objective}`,
+    '',
+    `RESOLVED PROJECTS: ${taskContract.resolvedProjects.map(x => x.name).join(', ') || 'none confidently resolved'}`,
+    '',
+    'REQUIRED EVIDENCE:',
+    ...taskContract.requiredEvidence.map(x => `- ${x}`),
+    '',
+    'RULES:',
+    ...taskContract.rules.map(x => `- ${x}`)
+  ].join('\n');
+
+  return {
+    missionId: `B2Q-${hash({prompt, projects: taskContract.resolvedProjects.map(x => x.name)}).toUpperCase()}`,
+    originalPrompt: String(prompt).trim(),
+    enhancedPrompt,
+    taskContract,
+    queryPlan: buildQueryPlan(prompt, matches),
+    sourceInventory: {
+      explicitProjectCount: projects.length,
+      projectNames: projects.slice(0, 200).map(projectName).filter(Boolean)
+    },
+    note: 'Deterministic read-only mission compile. Exhaustiveness is bounded by the current AI Miner search API.'
+  };
+}
+
+export async function runBrain2Mission(client, prompt, options = {}) {
+  const maxQueries = Math.max(4, Math.min(Number(options.maxQueries ?? 20), 40));
+  const maxEvidence = Math.max(10, Math.min(Number(options.maxEvidence ?? 80), 200));
+  const maxBootstrapProjects = Math.max(0, Math.min(Number(options.maxBootstrapProjects ?? 3), 5));
+  const mission = await compileBrain2Mission(client, prompt, { maxBootstrapProjects });
+
+  const evidence = [];
+  const ids = new Set();
+  const queryLog = [];
+  let searchesSucceeded = 0;
+
+  async function runQuery(query, phase) {
+    if (queryLog.length >= maxQueries || evidence.length >= maxEvidence) return;
+    const log = { query, phase, ok: false, newEvidence: 0 };
+    try {
+      const raw = await client.search(query, { mode: 'evidence' });
+      for (const record of extractRecords(raw).slice(0, 30)) {
+        const c = compact(record);
+        const id = hash(c);
+        if (ids.has(id)) continue;
+        ids.add(id);
+        evidence.push({ evidenceId: `E-${id}`, query, phase, record: c });
+        log.newEvidence += 1;
+        if (evidence.length >= maxEvidence) break;
+      }
+      log.ok = true;
+      searchesSucceeded += 1;
+    } catch (error) {
+      log.error = error instanceof Error ? error.message : String(error);
+    }
+    queryLog.push(log);
+  }
+
+  for (const query of mission.queryPlan) {
+    if (queryLog.length >= Math.max(4, maxQueries - 6)) break;
+    await runQuery(query, 'planned');
+  }
+
+  const baseTokens = tokenize([mission.originalPrompt, ...mission.taskContract.resolvedProjects.map(x => x.name)].join(' '));
+  const primary = mission.taskContract.resolvedProjects[0]?.name ?? mission.originalPrompt;
+  const residualQueries = unique(residualTokens(evidence, baseTokens, 8).map(t => `${primary} ${t}`), 8);
+  for (const query of residualQueries) {
+    if (queryLog.length >= maxQueries) break;
+    await runQuery(query, 'residual');
+  }
+
+  const unresolved = [];
+  if (!mission.taskContract.resolvedProjects.length) unresolved.push('No explicit AI Miner project name was confidently matched.');
+  if (!evidence.length) unresolved.push('No evidence was returned by the current AI Miner search API.');
+  if (queryLog.some(x => !x.ok)) unresolved.push('One or more searches failed and should be retried.');
+  if (queryLog.length >= maxQueries) unresolved.push('Query budget exhausted; deeper archaeology may find additional evidence.');
+
+  return {
+    mission: {
+      missionId: mission.missionId,
+      originalPrompt: mission.originalPrompt,
+      enhancedPrompt: mission.enhancedPrompt,
+      taskContract: mission.taskContract
+    },
+    retrieval: {
+      queryLog,
+      residualQueries,
+      searchesAttempted: queryLog.length,
+      searchesSucceeded,
+      evidenceCount: evidence.length,
+      evidenceCap: maxEvidence,
+      queryCap: maxQueries
+    },
+    contextPack: {
+      evidence,
+      unresolved,
+      instructionsForAssistant: [
+        'Answer only from the returned AI Miner evidence plus the user prompt.',
+        'Separate current truth from historical/superseded claims.',
+        'Label verified measurements separately from estimates or plans.',
+        'Surface contradictions and missing evidence explicitly.'
+      ]
+    },
+    coverage: {
+      explicitProjectCountSeen: mission.sourceInventory.explicitProjectCount,
+      matchedProjects: mission.taskContract.resolvedProjects,
+      boundedDeepSearchCompleted: true,
+      exhaustiveCorpusEnumerationProven: false
+    },
+    note: 'Read-only bounded deep retrieval complete. Full corpus enumeration requires a cursor/search-all API on the AI Miner side.'
+  };
+}

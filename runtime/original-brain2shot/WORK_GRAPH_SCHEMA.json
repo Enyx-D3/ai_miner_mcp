@@ -1,0 +1,25 @@
+{
+  "node_fields": [
+    "id",
+    "lane",
+    "objective",
+    "dependencies",
+    "status",
+    "priority",
+    "hard_gate",
+    "artifacts",
+    "residuals",
+    "blockers"
+  ],
+  "statuses": [
+    "WAITING",
+    "READY",
+    "RUNNING",
+    "VERIFY",
+    "REPAIR",
+    "BLOCKED",
+    "CLOSED",
+    "SUPERSEDED",
+    "NOT_APPLICABLE"
+  ]
+}
