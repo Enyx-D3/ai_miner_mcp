@@ -7,10 +7,13 @@ import { BrowserBridgeHub } from './browser-bridge-hub.mjs';
 import { MissionStore } from './mission-store.mjs';
 import { compileBrain2Mission, runBrain2Mission } from './mission-engine.mjs';
 import { advanceMission, exportMission, refreshMission, safeResultText, startMission, submitFinding, summarizeState } from './core.mjs';
+import { Brain2RuntimeWorker } from '../runtime/v1/worker.mjs';
+import { runClosedLoopExecution } from '../runtime/v1/closed-loop.mjs';
 
 const bridgeHub = new BrowserBridgeHub();
 const client = new AiMinerClient({ bridgeHub });
 const store = new MissionStore();
+const runtimeWorker = new Brain2RuntimeWorker({ stateDir: process.env.BRAIN2_RUNTIME_STATE_DIR ?? '.brain2-runtime' });
 const MCP_PATH = process.env.MCP_PATH ?? '/mcp';
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const AUTH_MODE = process.env.MCP_AUTH_MODE ?? (IS_PRODUCTION ? 'bearer' : 'none');
@@ -139,6 +142,19 @@ function createBrain2Server() {
   });
 
   if (CHATGPT_READ_ONLY) return server;
+
+  server.registerTool('brain2_runtime_execute', {
+    description: 'Execute one bounded R1-authorized Brain2 Runtime capability against an existing canonical B2JOB and return a proof-carrying B2RESULT. This never directly mutates AI Miner Current Truth.',
+    inputSchema: z.object({
+      b2job: z.record(z.string(), z.unknown()),
+      request: z.record(z.string(), z.unknown()),
+      hypothesis: z.object({ id: z.string().min(1).optional(), statement: z.string().min(1).optional() }).optional()
+    }),
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false }
+  }, async ({ b2job, request, hypothesis }) => {
+    try { return jsonContent(await runClosedLoopExecution({ worker: runtimeWorker, b2job, request, hypothesis })); }
+    catch (e) { return toolError(e); }
+  });
 
   server.registerTool('brain2_archaeology_start', {
     description: 'Start or resume a deterministic archaeology mission from the current AI Miner browser snapshot.',
