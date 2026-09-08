@@ -1,0 +1,9 @@
+.env
+.env.*
+!.env.example
+node_modules/
+.DS_Store
+data/*.sqlite
+data/*.sqlite-*
+data/exports/
+.brain2-runtime/
