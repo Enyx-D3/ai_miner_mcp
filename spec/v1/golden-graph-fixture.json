@@ -1,0 +1,21 @@
+{
+  "format": "B2_V1_GOLDEN_GRAPH_FIXTURE",
+  "version": 1,
+  "projectId": "p_v1_golden",
+  "atoms": [
+    {"id":"a_model_old","messageId":"m1","conversationId":"c1","projectId":"p_v1_golden","sourceId":"s1","kind":"decision","subject":"web model","canonicalSubject":"web model","value":"Qwen","scope":"web","text":"Use Qwen on Web.","confidence":1,"provenance":["m1"],"keywords":["qwen","web"],"hash":"h1","truthStatus":"SUPERSEDED","truthRecordId":"t_model_old"},
+    {"id":"a_model_new","messageId":"m2","conversationId":"c1","projectId":"p_v1_golden","sourceId":"s1","kind":"decision","subject":"web model","canonicalSubject":"web model","value":"Granite","scope":"web","text":"Use Granite on Web.","confidence":1,"provenance":["m2"],"keywords":["granite","web"],"hash":"h2","truthStatus":"CURRENT","truthRecordId":"t_model_new","supersedesTruthId":"t_model_old"},
+    {"id":"a_mobile_runtime","messageId":"m3","conversationId":"c2","projectId":"p_v1_golden","sourceId":"s1","kind":"fact","subject":"mobile neural runtime","canonicalSubject":"mobile neural runtime","value":"UNCONFIGURED","scope":"mobile","text":"Mobile neural runtime is unconfigured.","confidence":1,"provenance":["m3"],"keywords":["mobile","runtime"],"hash":"h3","truthStatus":"CURRENT","truthRecordId":"t_mobile_runtime"}
+  ],
+  "truths": [
+    {"id":"t_model_old","key":"web model|web","projectId":"p_v1_golden","atomId":"a_model_old","text":"Use Qwen on Web.","kind":"decision","status":"SUPERSEDED","confidence":1,"updatedAt":"2026-08-01T00:00:00Z","canonicalSubject":"web model","value":"Qwen","scope":"web"},
+    {"id":"t_model_new","key":"web model|web","projectId":"p_v1_golden","atomId":"a_model_new","text":"Use Granite on Web.","kind":"decision","status":"CURRENT","confidence":1,"supersedes":"t_model_old","updatedAt":"2026-09-01T00:00:00Z","evidenceAtomIds":["a_model_new"],"canonicalSubject":"web model","value":"Granite","scope":"web"},
+    {"id":"t_mobile_runtime","key":"mobile neural runtime|mobile","projectId":"p_v1_golden","atomId":"a_mobile_runtime","text":"Mobile neural runtime is unconfigured.","kind":"fact","status":"CURRENT","confidence":1,"updatedAt":"2026-09-08T00:00:00Z","evidenceAtomIds":["a_mobile_runtime"],"canonicalSubject":"mobile neural runtime","value":"UNCONFIGURED","scope":"mobile"}
+  ],
+  "assertions": {
+    "currentTruthSourceIds": ["t_model_new", "t_mobile_runtime"],
+    "supersededTruthSourceIds": ["t_model_old"],
+    "mustContainEdgeTypes": ["SUPERSEDES", "SUPPORTS", "DERIVED_FROM"],
+    "r2MayNotBecomeCurrentTruth": true
+  }
+}
