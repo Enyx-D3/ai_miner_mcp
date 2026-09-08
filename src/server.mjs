@@ -12,11 +12,19 @@ const bridgeHub = new BrowserBridgeHub();
 const client = new AiMinerClient({ bridgeHub });
 const store = new MissionStore();
 const MCP_PATH = process.env.MCP_PATH ?? '/mcp';
-const AUTH_MODE = process.env.MCP_AUTH_MODE ?? 'none';
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+const AUTH_MODE = process.env.MCP_AUTH_MODE ?? (IS_PRODUCTION ? 'bearer' : 'none');
 const SHARED = process.env.MCP_SHARED_SECRET ?? '';
 const BRIDGE_TOKEN = process.env.BRAIN2_BRIDGE_TOKEN ?? '';
 const BRIDGE_ALLOWED_ORIGINS = new Set((process.env.BRAIN2_BRIDGE_ALLOWED_ORIGINS ?? 'http://127.0.0.1:3000,http://localhost:3000').split(',').map(x => x.trim()).filter(Boolean));
 const MAX_BRIDGE_BODY = Number(process.env.BRAIN2_BRIDGE_MAX_BODY_BYTES ?? 8 * 1024 * 1024);
+
+if (IS_PRODUCTION && (AUTH_MODE !== 'bearer' || !SHARED)) {
+  throw new Error('Production MCP requires MCP_AUTH_MODE=bearer and a non-empty MCP_SHARED_SECRET.');
+}
+if (IS_PRODUCTION && !BRIDGE_TOKEN) {
+  throw new Error('Production browser bridge requires BRAIN2_BRIDGE_TOKEN.');
+}
 
 function jsonContent(value) { return { content: [{ type: 'text', text: safeResultText(value) }] }; }
 function toolError(err) { return { content: [{ type: 'text', text: `${err.name ?? 'Error'}: ${err.message}` }], isError: true }; }
