@@ -1,0 +1,13 @@
+{
+  "format": "B2_V1_CONTRACT_MANIFEST",
+  "version": 1,
+  "contractVersion": "1.0.0",
+  "identityVersion": "B2_ID_V9_ASIF_READER",
+  "syncProtocolVersion": 2,
+  "syncChannel": "brain2-sync",
+  "notes": [
+    "V1 contract version is intentionally independent from platform-local storage schema versions.",
+    "Web currently stores schemaVersion 9 while Mobile currently stores schemaVersion 10; migration parity is a release gate, not hidden by this manifest.",
+    "R1 is authoritative verified state. R2 is provisional derived intelligence and cannot auto-promote into R1."
+  ]
+}

@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://brain2.ai/spec/v1/r1_graph.schema.json",
+  "title": "Brain2 R1 Graph V1",
+  "type": "object",
+  "required": [
+    "format",
+    "version",
+    "graphVersion",
+    "nodes",
+    "edges",
+    "rootHash"
+  ],
+  "properties": {
+    "format": {
+      "const": "B2_R1_GRAPH"
+    },
+    "version": {
+      "const": 1
+    },
+    "graphVersion": {
+      "const": "B2_R1_GRAPH_V1"
+    },
+    "rootHash": {
+      "type": "string"
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "label",
+          "verificationState",
+          "evidenceIds"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "ATOM",
+              "TRUTH",
+              "EVIDENCE",
+              "DECISION",
+              "CONSTRAINT",
+              "FAILURE",
+              "EXPERIMENT",
+              "RESULT",
+              "ARTIFACT",
+              "PROCEDURE",
+              "TASK",
+              "OPEN_QUESTION",
+              "RELEASE_GATE"
+            ]
+          },
+          "projectId": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "sourceRecordId": {
+            "type": "string"
+          },
+          "truthStatus": {
+            "type": "string"
+          },
+          "verificationState": {
+            "enum": [
+              "VERIFIED",
+              "PARTIAL",
+              "CONFLICTING",
+              "UNVERIFIED",
+              "INVALID",
+              "NEEDS_REVERIFY"
+            ]
+          },
+          "evidenceIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "uniqueItems": true
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "from",
+          "to",
+          "type"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "from": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "SUPPORTS",
+              "CONTRADICTS",
+              "SUPERSEDES",
+              "DEPENDS_ON",
+              "REQUIRES",
+              "PRODUCED_BY",
+              "VERIFIED_BY",
+              "FAILED_BY",
+              "RESOLVES",
+              "DERIVED_FROM",
+              "BLOCKS",
+              "IMPLEMENTS",
+              "AFFECTS",
+              "RELATED_TO"
+            ]
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

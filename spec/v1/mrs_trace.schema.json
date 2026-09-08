@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://brain2.ai/spec/v1/mrs_trace.schema.json",
+  "title": "Brain2 V1 MRS Trace",
+  "type": "object",
+  "required": [
+    "format",
+    "version",
+    "requestId",
+    "stages",
+    "claims",
+    "residuals",
+    "terminationReason"
+  ],
+  "properties": {
+    "format": {
+      "const": "B2_MRS_TRACE"
+    },
+    "version": {
+      "const": 1
+    },
+    "requestId": {
+      "type": "string"
+    },
+    "stages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "r1NodeIds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "r2NodeIds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "claims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "claimId",
+          "text",
+          "evidenceIds",
+          "verification"
+        ],
+        "properties": {
+          "claimId": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "evidenceIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "verification": {
+            "enum": [
+              "EXACT",
+              "ENTAILED",
+              "PARTIAL",
+              "CONTRADICTED",
+              "UNSUPPORTED",
+              "UNKNOWN"
+            ]
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "residuals": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "terminationReason": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": true
+}

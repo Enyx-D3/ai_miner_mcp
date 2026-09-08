@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://brain2.ai/spec/v1/r2_graph.schema.json",
+  "title": "Brain2 R2 Graph V1",
+  "type": "object",
+  "required": [
+    "format",
+    "version",
+    "graphVersion",
+    "nodes",
+    "edges",
+    "rootHash"
+  ],
+  "properties": {
+    "format": {
+      "const": "B2_R2_GRAPH"
+    },
+    "version": {
+      "const": 1
+    },
+    "graphVersion": {
+      "const": "B2_R2_GRAPH_V1"
+    },
+    "rootHash": {
+      "type": "string"
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "statement",
+          "derivedFrom",
+          "confidence",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "HYPOTHESIS",
+              "CAUSAL_HYPOTHESIS",
+              "POSSIBLE_RELATION",
+              "MISSING_EVIDENCE",
+              "RESEARCH_QUESTION",
+              "CANDIDATE_ACTION",
+              "COUNTERFACTUAL",
+              "RISK",
+              "OPPORTUNITY",
+              "PREDICTION"
+            ]
+          },
+          "projectId": {
+            "type": "string"
+          },
+          "statement": {
+            "type": "string"
+          },
+          "derivedFrom": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "status": {
+            "enum": [
+              "PROVISIONAL",
+              "TESTABLE",
+              "DISPROVED",
+              "STALE",
+              "PROMOTION_CANDIDATE"
+            ]
+          },
+          "requiredEvidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "staleWhen": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "from",
+          "to",
+          "type"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "from": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "DERIVED_FROM",
+              "SUGGESTS",
+              "MAY_CAUSE",
+              "MAY_BLOCK",
+              "REQUIRES_EVIDENCE",
+              "ALTERNATIVE_TO",
+              "AFFECTS"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

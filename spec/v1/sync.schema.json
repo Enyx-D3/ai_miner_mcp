@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://brain2.ai/spec/v1/sync.schema.json",
+  "title": "Brain2 V1 Cross-Surface Sync Envelope",
+  "type": "object",
+  "required": [
+    "format",
+    "version",
+    "protocolVersion",
+    "channel",
+    "objectType",
+    "objectId",
+    "objectHash",
+    "payload"
+  ],
+  "properties": {
+    "format": {
+      "const": "B2_SYNC_ENVELOPE"
+    },
+    "version": {
+      "const": 1
+    },
+    "protocolVersion": {
+      "const": 2
+    },
+    "channel": {
+      "const": "brain2-sync"
+    },
+    "objectType": {
+      "enum": [
+        "ATOM",
+        "TRUTH",
+        "R1_GRAPH_DELTA",
+        "R2_GRAPH_DELTA",
+        "B2JOB",
+        "DATABOX",
+        "MRS_TRACE",
+        "EXECUTION_RESULT",
+        "VERIFIER_RESULT",
+        "B2M"
+      ]
+    },
+    "objectId": {
+      "type": "string"
+    },
+    "objectHash": {
+      "type": "string"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "payload": {}
+  },
+  "additionalProperties": true
+}

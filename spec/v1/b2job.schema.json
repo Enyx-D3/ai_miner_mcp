@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://brain2.ai/spec/v1/b2job.schema.json",
+  "title": "Brain2 V1 B2JOB",
+  "type": "object",
+  "required": [
+    "format",
+    "version",
+    "jobId",
+    "task",
+    "verificationContract"
+  ],
+  "properties": {
+    "format": {
+      "const": "B2JOB"
+    },
+    "version": {
+      "const": 1
+    },
+    "jobId": {
+      "type": "string"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "task": {
+      "type": "string"
+    },
+    "r1SeedNodeIds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "r2SeedNodeIds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "evidenceBudget": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "graphDepth": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 8
+    },
+    "allowedEdgeTypes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "allowedCapabilities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "verificationContract": {
+      "type": "object",
+      "required": [
+        "claimLevel",
+        "provenanceRequired"
+      ],
+      "properties": {
+        "claimLevel": {
+          "type": "boolean"
+        },
+        "provenanceRequired": {
+          "type": "boolean"
+        },
+        "semanticVerification": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": true
+}

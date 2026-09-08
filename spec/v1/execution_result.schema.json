@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://brain2.ai/spec/v1/execution_result.schema.json",
+  "title": "Brain2 V1 Execution Result",
+  "type": "object",
+  "required": [
+    "format",
+    "version",
+    "jobId",
+    "state",
+    "inputHashes",
+    "outputHashes",
+    "verifierResult"
+  ],
+  "properties": {
+    "format": {
+      "const": "B2_EXECUTION_RESULT"
+    },
+    "version": {
+      "const": 1
+    },
+    "jobId": {
+      "type": "string"
+    },
+    "state": {
+      "enum": [
+        "READY",
+        "RUNNING",
+        "COMPLETED",
+        "FAILED",
+        "CANCELLED",
+        "DENIED"
+      ]
+    },
+    "startedAt": {
+      "type": "string"
+    },
+    "finishedAt": {
+      "type": "string"
+    },
+    "outputs": {
+      "type": "array"
+    },
+    "artifacts": {
+      "type": "array"
+    },
+    "measurements": {
+      "type": "array"
+    },
+    "logs": {
+      "type": "array"
+    },
+    "inputHashes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "outputHashes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "evidenceGenerated": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "verifierResult": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": true
+}

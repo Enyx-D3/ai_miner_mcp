@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://brain2.ai/spec/v1/verifier_result.schema.json",
+  "title": "Brain2 V1 Verifier Result",
+  "type": "object",
+  "required": [
+    "format",
+    "version",
+    "verdict",
+    "integrity",
+    "structure",
+    "evidence",
+    "state",
+    "claims",
+    "residuals"
+  ],
+  "properties": {
+    "format": {
+      "const": "B2_VERIFIER_RESULT"
+    },
+    "version": {
+      "const": 1
+    },
+    "verdict": {
+      "enum": [
+        "PASS",
+        "FAIL",
+        "PARTIAL",
+        "PENDING"
+      ]
+    },
+    "integrity": {
+      "enum": [
+        "PASS",
+        "FAIL",
+        "PENDING"
+      ]
+    },
+    "structure": {
+      "enum": [
+        "PASS",
+        "FAIL",
+        "PENDING"
+      ]
+    },
+    "evidence": {
+      "enum": [
+        "PASS",
+        "FAIL",
+        "PENDING"
+      ]
+    },
+    "state": {
+      "enum": [
+        "PASS",
+        "FAIL",
+        "PENDING"
+      ]
+    },
+    "claims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "claimId",
+          "verification"
+        ],
+        "properties": {
+          "claimId": {
+            "type": "string"
+          },
+          "verification": {
+            "enum": [
+              "EXACT",
+              "ENTAILED",
+              "PARTIAL",
+              "CONTRADICTED",
+              "UNSUPPORTED",
+              "UNKNOWN"
+            ]
+          },
+          "evidenceIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "residuals": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "repairPackage": {
+      "type": [
+        "object",
+        "null"
+      ]
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://brain2.ai/spec/v1/databox.schema.json",
+  "title": "Brain2 V1 Verified Databox",
+  "type": "object",
+  "required": [
+    "format",
+    "version",
+    "id",
+    "query",
+    "evidence",
+    "evidenceHash",
+    "memoryRoot"
+  ],
+  "properties": {
+    "format": {
+      "const": "B2DATABOX"
+    },
+    "version": {
+      "const": 1
+    },
+    "id": {
+      "type": "string"
+    },
+    "query": {
+      "type": "string"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "memoryRoot": {
+      "type": "string"
+    },
+    "evidenceHash": {
+      "type": "string"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "text"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "truth",
+              "atom",
+              "message"
+            ]
+          },
+          "text": {
+            "type": "string"
+          },
+          "projectId": {
+            "type": "string"
+          },
+          "sourceId": {
+            "type": "string"
+          },
+          "conversationId": {
+            "type": "string"
+          },
+          "messageId": {
+            "type": "string"
+          },
+          "score": {
+            "type": "number"
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

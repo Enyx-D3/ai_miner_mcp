@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://brain2.ai/spec/v1/atom.schema.json",
+  "title": "Brain2 V1 Atom",
+  "type": "object",
+  "required": [
+    "id",
+    "kind",
+    "projectId",
+    "sourceId",
+    "text",
+    "confidence",
+    "provenance"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "kind": {
+      "type": "string",
+      "minLength": 1
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "sourceId": {
+      "type": "string"
+    },
+    "conversationId": {
+      "type": "string"
+    },
+    "messageId": {
+      "type": "string"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "canonicalSubject": {
+      "type": "string"
+    },
+    "value": {
+      "type": "string"
+    },
+    "scope": {
+      "type": "string"
+    },
+    "text": {
+      "type": "string"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "provenance": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "truthStatus": {
+      "enum": [
+        "CURRENT",
+        "SUPERSEDED",
+        "HISTORICAL",
+        "CONFLICTING",
+        "UNKNOWN",
+        "PENDING_REVIEW"
+      ]
+    },
+    "truthRelation": {
+      "enum": [
+        "SAME",
+        "REFINES",
+        "SUPERSEDES",
+        "CONTRADICTS",
+        "DIFFERENT_SCOPE",
+        "UNCERTAIN",
+        "NEW"
+      ]
+    },
+    "truthRecordId": {
+      "type": "string"
+    },
+    "supersedesTruthId": {
+      "type": "string"
+    },
+    "parentAtomId": {
+      "type": "string"
+    },
+    "validFrom": {
+      "type": "string"
+    },
+    "validTo": {
+      "type": "string"
+    },
+    "hash": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": true
+}

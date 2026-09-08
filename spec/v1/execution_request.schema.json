@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://brain2.ai/spec/v1/execution_request.schema.json",
+  "title": "Brain2 V1 Execution Request",
+  "type": "object",
+  "required": [
+    "format",
+    "version",
+    "jobId",
+    "projectId",
+    "capability",
+    "authorization",
+    "limits",
+    "verifierContract"
+  ],
+  "properties": {
+    "format": {
+      "const": "B2_EXECUTION_REQUEST"
+    },
+    "version": {
+      "const": 1
+    },
+    "jobId": {
+      "type": "string"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "capability": {
+      "type": "string"
+    },
+    "inputs": {
+      "type": "array"
+    },
+    "evidenceIds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "authorization": {
+      "type": "object",
+      "required": [
+        "signal",
+        "issuedAt",
+        "expiresAt",
+        "scopeHash"
+      ],
+      "properties": {
+        "signal": {
+          "enum": [
+            "ALLOW",
+            "DENY",
+            "PAUSE",
+            "REVOKE",
+            "REQUIRE_TICK",
+            "LIMIT_CHANGED"
+          ]
+        },
+        "issuedAt": {
+          "type": "string"
+        },
+        "expiresAt": {
+          "type": "string"
+        },
+        "scopeHash": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "filesystemScope": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "networkPolicy": {
+      "enum": [
+        "DENY",
+        "ALLOWLIST"
+      ]
+    },
+    "limits": {
+      "type": "object",
+      "required": [
+        "memoryBytes",
+        "timeoutMs"
+      ],
+      "properties": {
+        "memoryBytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "cpuMillis": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "storageBytes": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "verifierContract": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": true
+}
