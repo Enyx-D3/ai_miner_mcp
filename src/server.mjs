@@ -73,6 +73,14 @@ function createBrain2Server() {
     inputSchema: z.object({ query: z.string().min(1), projectId: z.string().optional(), mode: z.string().default('evidence') })
   }, async ({ query, projectId, mode }) => { try { return jsonContent(await client.search(query, { projectId, mode })); } catch (e) { return toolError(e); } });
 
+  server.registerTool('brain2_sync_proof', {
+    description: 'Return a deterministic live Web sync proof from AI Miner browser IndexedDB for G11 cross-surface convergence verification.',
+    annotations: READ_ONLY_ANNOTATIONS
+  }, async () => {
+    try { return jsonContent(await client.syncProof()); }
+    catch (e) { return toolError(e); }
+  });
+
   server.registerTool('brain2_inventory', {
     description: 'Return the live AI Miner corpus inventory and deterministic search-index coverage so ChatGPT can know what is actually searchable.',
     annotations: READ_ONLY_ANNOTATIONS

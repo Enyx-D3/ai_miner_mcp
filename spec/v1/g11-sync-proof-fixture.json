@@ -1,0 +1,91 @@
+{
+  "format": "B2_G11_SYNC_PROOF_FIXTURE",
+  "version": 1,
+  "truths": [
+    {
+      "id": "t_alpha",
+      "key": "alpha|global",
+      "projectId": "p_g11_sync",
+      "atomId": "a_alpha",
+      "text": "Alpha is current.",
+      "kind": "fact",
+      "status": "CURRENT",
+      "canonicalSubject": "alpha",
+      "value": "current",
+      "scope": "global",
+      "evidenceAtomIds": [
+        "a_alpha"
+      ]
+    },
+    {
+      "id": "t_beta_old",
+      "key": "beta|global",
+      "projectId": "p_g11_sync",
+      "atomId": "a_beta_old",
+      "text": "Beta old.",
+      "kind": "decision",
+      "status": "SUPERSEDED",
+      "canonicalSubject": "beta",
+      "value": "old",
+      "scope": "global",
+      "supersedes": "",
+      "evidenceAtomIds": []
+    },
+    {
+      "id": "t_beta_new",
+      "key": "beta|global",
+      "projectId": "p_g11_sync",
+      "atomId": "a_beta_new",
+      "text": "Beta new.",
+      "kind": "decision",
+      "status": "CURRENT",
+      "canonicalSubject": "beta",
+      "value": "new",
+      "scope": "global",
+      "supersedes": "t_beta_old",
+      "evidenceAtomIds": [
+        "a_beta_new",
+        "a_beta_support"
+      ]
+    }
+  ],
+  "mutations": [
+    {
+      "id": "m_web_1",
+      "originDeviceId": "web-a",
+      "originSequence": 1
+    },
+    {
+      "id": "m_web_2",
+      "originDeviceId": "web-a",
+      "originSequence": 2
+    },
+    {
+      "id": "m_mobile_1",
+      "originDeviceId": "mobile-b",
+      "originSequence": 1
+    },
+    {
+      "id": "m_mobile_3",
+      "originDeviceId": "mobile-b",
+      "originSequence": 3
+    }
+  ],
+  "expected": {
+    "truthStateRoot": "c713ad8c4880b035ff343341e8bf7c4f78082339545878609d281bcabcd71f89",
+    "mutationFrontierRoot": "fe252aa7826a83e60a73f1d539df436cd62f66d2a2dfc56c1670ec3babee27b4",
+    "currentTruthCount": 2,
+    "totalTruthCount": 3,
+    "mutationCount": 4,
+    "frontier": [
+      [
+        "mobile-b",
+        3
+      ],
+      [
+        "web-a",
+        2
+      ]
+    ]
+  }
+}

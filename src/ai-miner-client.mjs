@@ -120,6 +120,11 @@ export class AiMinerClient {
     return this.bridge.request('inventory');
   }
 
+  async syncProof() {
+    return this.bridge.request('syncProof');
+  }
+
+
   async currentTruth(projectId) {
     return this.bridge.request('currentTruth', { projectId });
   }
