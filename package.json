@@ -12,7 +12,9 @@
     "check": "node --check src/server.mjs && node --check src/core.mjs && node --check src/ai-miner-client.mjs && node --check src/mission-store.mjs && node --check src/deterministic-zip.mjs",
     "test": "node --test tests/*.test.mjs",
     "verify": "npm run check && npm test",
-    "probe:ai-miner": "node src/probe.mjs"
+    "probe:ai-miner": "node src/probe.mjs",
+    "check:global-context": "node scripts/check-global-context.mjs",
+    "check:release-hygiene": "node scripts/check-release-hygiene.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/node": "2.0.0",

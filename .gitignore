@@ -1,0 +1,10 @@
+
+# Global Context release hygiene
+.env
+.env.*
+!.env.example
+node_modules/
+data/*.sqlite*
+data/*.db*
+data/*.wal
+data/*.shm

@@ -139,6 +139,12 @@ export class AiMinerClient {
     return raw;
   }
 
+  async resumeCapsule(project) { return this.bridge.request('resumeCapsule', { project }); }
+
+  async antiReinvention(query, { project, limit = 6 } = {}) { return this.bridge.request('antiReinvention', { query, project, limit }); }
+
+  async contextPackage(task, { project, evidenceLimit = 24 } = {}) { return this.bridge.request('contextPackage', { task, project, evidenceLimit }); }
+
   async createCanonicalMission(input) {
     return this.bridge.request('createMission', input);
   }

@@ -56,6 +56,24 @@ function createBrain2Server() {
     inputSchema: z.object({ project: z.string().min(1) })
   }, async ({ project }) => { try { return jsonContent(await client.bootstrap(project)); } catch (e) { return toolError(e); } });
 
+  server.registerTool('brain2_resume_capsule', {
+    description: 'Build a read-only bounded project re-entry capsule from live Global Context memory. It does not mutate Current Truth.',
+    annotations: READ_ONLY_ANNOTATIONS,
+    inputSchema: z.object({ project: z.string().min(1) })
+  }, async ({ project }) => { try { return jsonContent(await client.resumeCapsule(project)); } catch (e) { return toolError(e); } });
+
+  server.registerTool('brain2_anti_reinvention', {
+    description: 'Check whether requested work already exists as Current Truth, historical work, a known failure, prior decision, or reusable verified know-how.',
+    annotations: READ_ONLY_ANNOTATIONS,
+    inputSchema: z.object({ query: z.string().min(1), project: z.string().optional(), limit: z.number().int().min(1).max(20).default(6) })
+  }, async ({ query, project, limit }) => { try { return jsonContent(await client.antiReinvention(query, { project, limit })); } catch (e) { return toolError(e); } });
+
+  server.registerTool('brain2_context_package', {
+    description: 'Compile a read-only bounded Global Context package and exact outbound preview. Full archive is excluded; this tool does not grant consent to send it anywhere.',
+    annotations: READ_ONLY_ANNOTATIONS,
+    inputSchema: z.object({ task: z.string().min(1), project: z.string().min(1), evidenceLimit: z.number().int().min(4).max(64).default(24) })
+  }, async ({ task, project, evidenceLimit }) => { try { return jsonContent(await client.contextPackage(task, { project, evidenceLimit })); } catch (e) { return toolError(e); } });
+
   server.registerTool('brain2_search', {
     description: 'Search live AI Miner evidence. Results come from AI Miner browser IndexedDB, not the MCP mission cache.',
     annotations: READ_ONLY_ANNOTATIONS,
