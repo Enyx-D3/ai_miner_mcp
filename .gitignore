@@ -8,3 +8,13 @@ data/*.sqlite*
 data/*.db*
 data/*.wal
 data/*.shm
+
+# Global Context V2 release hygiene
+.env
+node_modules/
+data/*.sqlite*
+data/*.db*
+data/*.wal
+data/*.shm
+data/exports/*.zip
+src/*.before-*

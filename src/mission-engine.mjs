@@ -1293,6 +1293,11 @@ export async function runBrain2Mission(client, prompt, options = {}) {
       escalatedFrom = 'fast';
       modeUsed = 'standard';
       await standardPass();
+      const standardSelected = selectContextEvidence(evidence, mission, maxEvidence);
+      if (!fastEvidenceSufficient(standardSelected, mission)) {
+        modeUsed = 'deep';
+        residualQueries = await deepPass();
+      }
     }
   }
 

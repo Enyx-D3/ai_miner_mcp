@@ -1,0 +1,10 @@
+import fs from "node:fs";
+import { execFileSync } from "node:child_process";
+const server=fs.readFileSync("src/server.mjs","utf8");
+const engine=fs.readFileSync("src/mission-engine.mjs","utf8");
+for(const token of ["brain2_resume_capsule","brain2_anti_reinvention","brain2_context_package"])if(!server.includes(token))throw new Error(`missing ${token}`);
+if(!server.includes("retrievalEscalation")||!engine.includes("standardSelected")||!engine.includes("deepPass"))throw new Error("adaptive deep escalation missing");
+const tracked=execFileSync("git",["ls-files"],{encoding:"utf8"}).split(/\r?\n/).filter(Boolean);
+const bad=tracked.filter(p=>p===".env"||p.startsWith("node_modules/")||/^data\/.*\.(sqlite|sqlite3|db|wal|shm)$/i.test(p)||p.startsWith("data/exports/")||/\.before-[^/]+$/i.test(p));
+if(bad.length)throw new Error(`release hygiene failed: ${bad.slice(0,8).join(", ")}${bad.length>8?` (+${bad.length-8})`:""}`);
+console.log("Global Context V2 MCP contract + hygiene PASS");

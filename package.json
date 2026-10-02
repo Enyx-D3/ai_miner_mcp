@@ -14,7 +14,8 @@
     "verify": "npm run check && npm test",
     "probe:ai-miner": "node src/probe.mjs",
     "check:global-context": "node scripts/check-global-context.mjs",
-    "check:release-hygiene": "node scripts/check-release-hygiene.mjs"
+    "check:release-hygiene": "node scripts/check-release-hygiene.mjs",
+    "check:global-context-v2": "node scripts/check-global-context-v2.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/node": "2.0.0",

@@ -72,7 +72,18 @@ function createBrain2Server() {
     description: 'Compile a read-only bounded Global Context package and exact outbound preview. Full archive is excluded; this tool does not grant consent to send it anywhere.',
     annotations: READ_ONLY_ANNOTATIONS,
     inputSchema: z.object({ task: z.string().min(1), project: z.string().min(1), evidenceLimit: z.number().int().min(4).max(64).default(24) })
-  }, async ({ task, project, evidenceLimit }) => { try { return jsonContent(await client.contextPackage(task, { project, evidenceLimit })); } catch (e) { return toolError(e); } });
+  }, async ({ task, project, evidenceLimit }) => {
+    try {
+      const base = await client.contextPackage(task, { project, evidenceLimit });
+      const sufficiency = base?.package?.compilerSupplement?.sufficiencyState ?? '';
+      let retrievalEscalation = { performed: false, reason: 'BOUNDED_CONTEXT_SUFFICIENT' };
+      if (sufficiency !== 'SUFFICIENT') {
+        const mission = await runBrain2Mission(client, `${task}\nProject hint: ${project}`, { maxEvidence: Math.max(24, evidenceLimit), maxQueries: 20, maxBootstrapProjects: 3 });
+        retrievalEscalation = { performed: true, reason: `BOUNDED_CONTEXT_${sufficiency || 'UNKNOWN'}`, modeUsed: mission?.performance?.modeUsed, contextPack: mission?.contextPack, coverage: mission?.coverage, retrieval: mission?.retrieval };
+      }
+      return jsonContent({ ...base, retrievalEscalation });
+    } catch (e) { return toolError(e); }
+  });
 
   server.registerTool('brain2_search', {
     description: 'Search live AI Miner evidence. Results come from AI Miner browser IndexedDB, not the MCP mission cache.',
