@@ -141,6 +141,12 @@ export class AiMinerClient {
 
   async resumeCapsule(project) { return this.bridge.request('resumeCapsule', { project }); }
 
+  async continuity(project) { return this.bridge.request('continuity', { project }); }
+
+  async answerUpgrade(project, previousAnswer, previousEvidenceIds = []) { return this.bridge.request('answerUpgrade', { project, previousAnswer, previousEvidenceIds }); }
+
+  async queryPlan(query, { projectCount = 0 } = {}) { return this.bridge.request('queryPlan', { query, projectCount }); }
+
   async antiReinvention(query, { project, limit = 6 } = {}) { return this.bridge.request('antiReinvention', { query, project, limit }); }
 
   async contextPackage(task, { project, evidenceLimit = 24 } = {}) { return this.bridge.request('contextPackage', { task, project, evidenceLimit }); }

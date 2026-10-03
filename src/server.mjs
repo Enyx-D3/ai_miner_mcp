@@ -62,6 +62,24 @@ function createBrain2Server() {
     inputSchema: z.object({ project: z.string().min(1) })
   }, async ({ project }) => { try { return jsonContent(await client.resumeCapsule(project)); } catch (e) { return toolError(e); } });
 
+  server.registerTool('brain2_continuity', {
+    description: 'Read the durable Phase-2 continuity snapshot: active goal, evidence-aware checklist, avoided-work ledger, recap and prescription.',
+    annotations: READ_ONLY_ANNOTATIONS,
+    inputSchema: z.object({ project: z.string().min(1) })
+  }, async ({ project }) => { try { return jsonContent(await client.continuity(project)); } catch (e) { return toolError(e); } });
+
+  server.registerTool('brain2_answer_upgrade', {
+    description: 'Replay a previous answer against current Global Context truth and return VALID/STALE/CONTRADICTED/MISSING/UNVERIFIED deltas without mutating Current Truth.',
+    annotations: READ_ONLY_ANNOTATIONS,
+    inputSchema: z.object({ project: z.string().min(1), previousAnswer: z.string().min(1), previousEvidenceIds: z.array(z.string()).default([]) })
+  }, async ({ project, previousAnswer, previousEvidenceIds }) => { try { return jsonContent(await client.answerUpgrade(project, previousAnswer, previousEvidenceIds)); } catch (e) { return toolError(e); } });
+
+  server.registerTool('brain2_query_plan', {
+    description: 'Return the deterministic shared Web/Android/MCP retrieval classification and FAST/STANDARD/DEEP plan for a query.',
+    annotations: READ_ONLY_ANNOTATIONS,
+    inputSchema: z.object({ query: z.string().min(1), projectCount: z.number().int().min(0).max(1000).default(0) })
+  }, async ({ query, projectCount }) => { try { return jsonContent(await client.queryPlan(query, { projectCount })); } catch (e) { return toolError(e); } });
+
   server.registerTool('brain2_anti_reinvention', {
     description: 'Check whether requested work already exists as Current Truth, historical work, a known failure, prior decision, or reusable verified know-how.',
     annotations: READ_ONLY_ANNOTATIONS,

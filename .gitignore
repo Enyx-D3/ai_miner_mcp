@@ -18,3 +18,9 @@ data/*.wal
 data/*.shm
 data/exports/*.zip
 src/*.before-*
+
+# Global Context Phase 4 repository debris
+.DS_Store
+*.bak
+*.old
+*backup*

@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { planSharedQuery } from './shared-query-planner.mjs';
 
 const STOPWORDS = new Set([
   'the','and','for','with','that','this','from','into','your','our','what','when','where','which','who','why','how','is','of','we','do','to','a','an','in','on',
@@ -203,32 +204,9 @@ function v7CacheSet(key, value) {
 }
 
 function missionPerformanceMode(prompt, options = {}) {
-  const requested = String(options.performanceMode ?? options.retrievalMode ?? options.mode ?? '').toLowerCase();
-  if (['fast','standard','deep'].includes(requested)) return requested;
-
-  const p = String(prompt ?? '').toLowerCase();
-  if (
-    p.includes('deep archaeology') ||
-    p.includes('deep search') ||
-    p.includes('search everything') ||
-    p.includes('search all') ||
-    p.includes('nothing is missed') ||
-    p.includes('nothing was missed') ||
-    p.includes('make sure nothing') ||
-    p.includes('exhaustive') ||
-    p.includes('all evidence') ||
-    p.includes('archaeology')
-  ) return 'deep';
-
-  if (
-    p.includes('compare across') ||
-    p.includes('contradiction') ||
-    p.includes('conflicting') ||
-    p.includes('full timeline') ||
-    p.includes('historical lineage')
-  ) return 'standard';
-
-  return 'fast';
+  const requested = String(options.performanceMode ?? options.retrievalMode ?? options.mode ?? '').toUpperCase();
+  const requestedMode = ['FAST','STANDARD','DEEP'].includes(requested) ? requested : undefined;
+  return planSharedQuery(prompt, { requestedMode, projectCount: Number(options.projectCount ?? 0) }).mode.toLowerCase();
 }
 
 function missionTopicQuery(mission) {
@@ -1009,6 +987,7 @@ export async function compileBrain2Mission(client, prompt, options = {}) {
     retainedTruthCount: taskContract.relevantCurrentTruth.length
   };
 
+  const sharedQueryPlan = planSharedQuery(prompt, { projectCount: taskContract.resolvedProjects.length });
   const queryPlan = buildQueries(prompt, refinedDiscovery, relevantBootstrap);
 
   const enhancedPrompt = [
@@ -1043,6 +1022,7 @@ export async function compileBrain2Mission(client, prompt, options = {}) {
       }))
     },
     queryPlan,
+    sharedQueryPlan,
     discovery: {
       queries: discovery.discoveryQueries,
       candidates: discovery.rankedCandidates
